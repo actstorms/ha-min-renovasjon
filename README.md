@@ -17,6 +17,13 @@ This custom integration allows you to integrate Min Renovasjon waste collection 
 2. Copy the folder to your `custom_components` directory in your Home Assistant configuration directory.
 3. Restart Home Assistant.
 
+## Get Street code and county id
+Can be found with this REST-API call.
+```
+https://ws.geonorge.no/adresser/v1/sok?sok=Min%20Gate%2012
+```
+"street_code" equals to "adressekode" and "county_id" equals to "kommunenummer".
+
 ## Configuration
 
 To add Min Renovasjon to your Home Assistant instance:
