@@ -1,5 +1,5 @@
 {
-    "name": "min_renovasjon", 
+    "name": "Min renovasjon", 
     "render_readme": true,
     "homeassistant": "2023.10.0"
 }
