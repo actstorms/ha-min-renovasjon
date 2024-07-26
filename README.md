@@ -11,6 +11,8 @@ This custom integration allows you to integrate Min Renovasjon waste collection 
 
 ## Installation
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=actstorms&repository=ha-min-renovasjon&category=integration)
+
 ### Manual Installation
 
 1. Download the `min_renovasjon` folder from this repository.
