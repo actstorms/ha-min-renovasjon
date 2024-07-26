@@ -1,0 +1,34 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Min Renovasjon",
+          "description": "Sett opp Min Renovasjon integrasjon",
+          "data": {
+            "street_name": "Gatenavn",
+            "street_code": "Gatekode",
+            "house_no": "Husnummer",
+            "county_id": "Kommunenummer"
+          }
+        }
+      },
+      "error": {
+        "cannot_connect": "Kunne ikke koble til",
+        "invalid_auth": "Ugyldig autentisering",
+        "unknown": "Uventet feil"
+      },
+      "abort": {
+        "already_configured": "Min Renovasjon er allerede konfigurert"
+      }
+    },
+    "entity": {
+      "sensor": {
+        "next_pickup": {
+          "name": "Neste henting",
+          "state": {
+            "unknown": "Ukjent"
+          }
+        }
+      }
+    }
+  }

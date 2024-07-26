@@ -1,0 +1,35 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "My Renovation",
+          "description": "Set up My Renovation integration",
+          "data": {
+            "street_name": "Street Name",
+            "street_code": "Street Code",
+            "house_no": "House Number",
+            "county_id": "County Number"
+          }
+        }
+      },
+      "error": {
+        "cannot_connect": "Could not connect",
+        "invalid_auth": "Invalid authentication",
+        "unknown": "Unexpected error"
+      },
+      "abort": {
+        "already_configured": "My Renovation is already configured"
+      }
+    },
+    "entity": {
+      "sensor": {
+        "next_pickup": {
+          "name": "Next Pickup",
+          "state": {
+            "unknown": "Unknown"
+          }
+        }
+      }
+    }
+  }
+  
