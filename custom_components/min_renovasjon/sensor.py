@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -77,6 +78,11 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
             if fraction_data:
                 if len(fraction_data) > 4 and fraction_data[4]:
                     attributes["next_collection"] = self.coordinator.min_renovasjon.format_date(fraction_data[4])
+                if len(fraction_data) > 3 and fraction_data[3]:
+                    next_date = fraction_data[3]
+                    if isinstance(next_date, datetime):
+                        days_until = (next_date.date() - datetime.now().date()).days
+                        attributes["days_until"] = max(0, days_until)
                 attributes["fraction_name"] = FRACTION_IDS.get(int(self._fraction_id), f"Unknown {self._fraction_id}")
             _LOGGER.debug("Extra state attributes for fraction %s: %s", self._fraction_id, attributes)
         except Exception as e:
