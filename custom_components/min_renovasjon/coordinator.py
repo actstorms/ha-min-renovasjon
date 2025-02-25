@@ -24,7 +24,7 @@ class MinRenovasjonCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=1),
+            update_interval=timedelta(hours=24),
         )
         self.min_renovasjon = MinRenovasjon(
             entry.data[CONF_STREET_NAME],
