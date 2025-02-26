@@ -7,7 +7,7 @@ This custom integration allows you to integrate Min Renovasjon waste collection 
 - Automatically fetches waste collection data from Min Renovasjon API
 - Creates sensors for each waste fraction (e.g., paper, residual waste, food waste)
 - Displays the next collection date for each fraction
-- Updates data periodically (default: every hour)
+- Updates data periodically (default: daily)
 
 ## Installation
 
