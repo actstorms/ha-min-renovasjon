@@ -14,22 +14,68 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    
-    if not isinstance(coordinator, MinRenovasjonCoordinator):
-        raise TypeError("Coordinator is not of type MinRenovasjonCoordinator")
-    
-    _LOGGER.debug("Setting up sensors for fractions: %s", coordinator.fractions)
-    
-    async_add_entities(
-        MinRenovasjonSensor(coordinator, fraction_id)
-        for fraction_id in coordinator.fractions
-    )
+class MinRenovasjonNextCollectionSensor(CoordinatorEntity, SensorEntity):
+    def __init__(self, coordinator: MinRenovasjonCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_next_collection"
+        self._attr_name = "Min Renovasjon Next Collection"
+
+    @property
+    def state(self) -> str:
+        try:
+            next_collections = {}
+            for fraction_id in self.coordinator.fractions:
+                fraction_data = self.coordinator.data.get(fraction_id)
+                if not fraction_data or len(fraction_data) <= 3 or not fraction_data[3]:
+                    continue
+                
+                collection_date = fraction_data[3]
+                if not isinstance(collection_date, datetime):
+                    continue
+                    
+                date_str = collection_date.date().isoformat()
+                if date_str not in next_collections:
+                    next_collections[date_str] = []
+                next_collections[date_str].append(FRACTION_IDS.get(int(fraction_id), f"Unknown {fraction_id}"))
+
+            if not next_collections:
+                return "Unavailable"
+
+            # Get the earliest date
+            earliest_date = min(next_collections.keys())
+            fractions = next_collections[earliest_date]
+            return " og ".join(fractions)
+
+        except Exception as e:
+            _LOGGER.exception("Error getting state for next collection sensor: %s", e)
+            return "Unavailable"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | int]:
+        attributes = {}
+        try:
+            next_date = None
+            for fraction_id in self.coordinator.fractions:
+                fraction_data = self.coordinator.data.get(fraction_id)
+                if not fraction_data or len(fraction_data) <= 3 or not fraction_data[3]:
+                    continue
+                    
+                collection_date = fraction_data[3]
+                if not isinstance(collection_date, datetime):
+                    continue
+                    
+                if next_date is None or collection_date < next_date:
+                    next_date = collection_date
+
+            if next_date:
+                days_until = (next_date.date() - datetime.now().date()).days
+                attributes["days_until"] = max(0, days_until)
+                attributes["next_collection_date"] = next_date.strftime("%d/%m/%Y")
+
+        except Exception as e:
+            _LOGGER.error("Error getting extra state attributes for next collection sensor: %s", e)
+
+        return attributes
 
 class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
 
@@ -88,3 +134,20 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
         except Exception as e:
             _LOGGER.error("Error getting extra state attributes for fraction %s: %s", self._fraction_id, e)
         return attributes
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    
+    if not isinstance(coordinator, MinRenovasjonCoordinator):
+        raise TypeError("Coordinator is not of type MinRenovasjonCoordinator")
+    
+    _LOGGER.debug("Setting up sensors for fractions: %s", coordinator.fractions)
+    
+    entities = [MinRenovasjonSensor(coordinator, fraction_id) for fraction_id in coordinator.fractions]
+    entities.append(MinRenovasjonNextCollectionSensor(coordinator))
+    
+    async_add_entities(entities)
