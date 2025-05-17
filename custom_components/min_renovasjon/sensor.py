@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, FRACTION_IDS
+from .const import DOMAIN
 from .coordinator import MinRenovasjonCoordinator
 
 import logging
@@ -36,7 +36,7 @@ class MinRenovasjonNextCollectionSensor(CoordinatorEntity, SensorEntity):
                 date_str = collection_date.date().isoformat()
                 if date_str not in next_collections:
                     next_collections[date_str] = []
-                next_collections[date_str].append(FRACTION_IDS.get(int(fraction_id), f"Unknown {fraction_id}"))
+                next_collections[date_str].append(self.coordinator.min_renovasjon.get_fraction_name(fraction_id))
 
             if not next_collections:
                 return "Unavailable"
@@ -83,7 +83,7 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._fraction_id = fraction_id
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{fraction_id}"
-        self._attr_name = f"Min Renovasjon {FRACTION_IDS.get(int(fraction_id), f'Unknown {fraction_id}')}"
+        self._attr_name = f"Min Renovasjon {coordinator.min_renovasjon.get_fraction_name(fraction_id)}"
         _LOGGER.debug("Initialized sensor for fraction %s with name %s", fraction_id, self._attr_name)
 
     @property
@@ -129,7 +129,7 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
                     if isinstance(next_date, datetime):
                         days_until = (next_date.date() - datetime.now().date()).days
                         attributes["days_until"] = max(0, days_until)
-                attributes["fraction_name"] = FRACTION_IDS.get(int(self._fraction_id), f"Unknown {self._fraction_id}")
+                attributes["fraction_name"] = self.coordinator.min_renovasjon.get_fraction_name(self._fraction_id)
             _LOGGER.debug("Extra state attributes for fraction %s: %s", self._fraction_id, attributes)
         except Exception as e:
             _LOGGER.error("Error getting extra state attributes for fraction %s: %s", self._fraction_id, e)
