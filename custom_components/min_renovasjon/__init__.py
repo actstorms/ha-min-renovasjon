@@ -1,16 +1,40 @@
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_STREET_NAME,
+    CONF_STREET_CODE,
+    CONF_HOUSE_NO,
+    CONF_COUNTY_ID,
+    DEFAULT_DATE_FORMAT,
+)
 from .coordinator import MinRenovasjonCoordinator
+from .min_renovasjon import MinRenovasjon
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
+_LOGGER = logging.getLogger(__name__)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    coordinator = MinRenovasjonCoordinator(hass, entry)
+    """Set up Min Renovasjon from a config entry."""
+    _LOGGER.debug("Setting up Min Renovasjon")
+    api = MinRenovasjon(
+        entry.data[CONF_STREET_NAME],
+        entry.data[CONF_STREET_CODE],
+        entry.data[CONF_HOUSE_NO],
+        entry.data[CONF_COUNTY_ID],
+        DEFAULT_DATE_FORMAT
+    )
+    await api.get_fraction_types()
+    coordinator = MinRenovasjonCoordinator(hass, api)
+
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})

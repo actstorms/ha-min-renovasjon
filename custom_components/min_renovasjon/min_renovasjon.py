@@ -1,7 +1,7 @@
+import aiohttp
 import urllib.parse
-import requests
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,14 +21,15 @@ CONST_APP_KEY_VALUE = "AE13DEEC-804F-4615-A74E-B4FAC11F0A30"
 
 class MinRenovasjon:
 
+    _calendar_list = []
+    _fraction_types = {}
+
     def __init__(self, gatenavn, gatekode, husnr, kommunenr, date_format):
-        self.gatenavn = self._url_encode(gatenavn)
-        self.gatekode = gatekode
-        self.husnr = husnr
+        self._gatenavn = self._url_encode(gatenavn)
+        self._gatekode = gatekode
+        self._husnr = husnr
         self._kommunenr = kommunenr
         self._date_format = date_format
-        self.calender_list = []
-        self._fraction_icons = {}
 
     @staticmethod
     def _url_encode(string):
@@ -37,14 +38,13 @@ class MinRenovasjon:
             string = string_decoded_encoded
         return string
 
-    def refresh_calendar(self):
+    async def refresh_calendar(self):
         try:
             _LOGGER.debug("Starting calendar refresh")
-            self._get_fractions()
-            self.calender_list = self._get_calendar_list()
+            self.calender_list = await self._get_calendar_list()
             _LOGGER.debug("Calendar refresh completed successfully")
             _LOGGER.debug("Calendar list: %s", self.calender_list)
-        except requests.RequestException as err:
+        except aiohttp.ClientError as err:
             _LOGGER.error("Failed to connect to Min Renovasjon API: %s", err)
             raise ConnectionError(f"Failed to connect to Min Renovasjon API: {err}") from err
         except json.JSONDecodeError as err:
@@ -54,46 +54,47 @@ class MinRenovasjon:
             _LOGGER.error("Unexpected error occurred: %s", err)
             raise
 
-    def _get_from_web_api(self, url):
+    async def _get_from_web_api(self, url):
         header = {
             CONST_KOMMUNE_NUMMER: self._kommunenr,
             CONST_APP_KEY: CONST_APP_KEY_VALUE,
         }
-
         _LOGGER.debug("Requesting URL: %s", url)
-        try:
-            response = requests.get(url, headers=header, timeout=10)
-            response.raise_for_status()
-            _LOGGER.debug("API response status code: %s", response.status_code)
-            return response.json()
-        except requests.RequestException as err:
-            _LOGGER.error("API request failed: %s", err)
-            raise
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=header, timeout=10) as response:
+                _LOGGER.debug("API response status code: %s", response.status)
+                response.raise_for_status()
+                return await response.json(content_type=None)
 
-    def _get_fractions(self):
-        _LOGGER.debug("Fetching fraction types")
-        fractions_data = self._get_from_web_api(CONST_URL_FRAKSJONER)
-        self._fraction_icons = {
-            fraction['Id']: fraction.get('Ikon', '')
+    async def get_fraction_types(self):
+        _LOGGER.debug("Fetching fractions")
+        fractions_data = await self._get_from_web_api(CONST_URL_FRAKSJONER)
+        self._fraction_types = {
+            fraction['Id']: fraction
             for fraction in fractions_data
         }
-        _LOGGER.debug("Fetched fraction types: %s", self._fraction_icons)
 
-    def _get_calendar_list(self):
+    def get_fraction_name(self, fraction_id):
+        return self._fraction_types.get(int(fraction_id), {}).get("Navn", f"Unknown fraction {fraction_id}")
+
+    def get_fraction_icon(self, fraction_id):
+        return self._fraction_types.get(int(fraction_id), {}).get("Ikon", "")
+
+    async def _get_calendar_list(self):
         url = CONST_URL_TOMMEKALENDER.replace("[kommunenr]", self._kommunenr)
-        url = url.replace("[gatenavn]", self.gatenavn)
-        url = url.replace("[gatekode]", self.gatekode)
-        url = url.replace("[husnr]", self.husnr)
+        url = url.replace("[gatenavn]", self._gatenavn)
+        url = url.replace("[gatekode]", self._gatekode)
+        url = url.replace("[husnr]", self._husnr)
 
-        data = self._get_from_web_api(url)
+        data = await self._get_from_web_api(url)
         _LOGGER.debug("Received calendar data: %s", json.dumps(data, indent=2))
 
         calendar_list = []
         for entry in data:
             try:
-                fraction_id = entry['FraksjonId']
-                fraction_name = entry.get('Navn', f"Unknown Fraction {fraction_id}")
-                icon = self._fraction_icons.get(fraction_id, "")
+                fraction_id = entry["FraksjonId"]
+                fraction_name = self.get_fraction_name(fraction_id)
+                icon = self.get_fraction_icon(fraction_id)
                 
                 pickup_dates = entry.get('Tommedatoer', [])
                 next_pickup = datetime.strptime(pickup_dates[0], "%Y-%m-%dT%H:%M:%S") if pickup_dates else None
