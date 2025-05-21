@@ -111,7 +111,10 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
         try:
             fraction_data = self.coordinator.data.get(self._fraction_id)
             if fraction_data and len(fraction_data) > 2:
-                return fraction_data[2]
+                url = fraction_data[2]
+                if url and url.startswith('http://'):
+                    return url.replace('http://', 'https://', 1)
+                return url
         except Exception as e:
             _LOGGER.error("Error getting entity picture for fraction %s: %s", self._fraction_id, e)
         return None
