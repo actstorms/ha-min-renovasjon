@@ -17,7 +17,7 @@ from .const import (
 from .coordinator import MinRenovasjonCoordinator
 from .min_renovasjon import MinRenovasjon
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.CALENDAR]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await api.get_fraction_types()
     coordinator = MinRenovasjonCoordinator(hass, api)
+    coordinator.config_entry = entry  # Add config_entry reference
 
     await coordinator.async_config_entry_first_refresh()
 
