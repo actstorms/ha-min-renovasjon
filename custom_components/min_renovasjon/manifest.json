@@ -2,14 +2,14 @@
     "domain": "min_renovasjon",
     "name": "Min renovasjon",
     "codeowners": ["@actstorms"],
-    "documentation": "https://github.com/actstorms/ha-min-renovasjon",
-    "issue_tracker": "https://github.com/actstorms/ha-min-renovasjon/issues",
-    "iot_class": "cloud_polling",
     "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://github.com/actstorms/ha-min-renovasjon",
+    "homekit": {},
+    "iot_class": "cloud_polling",
+    "issue_tracker": "https://github.com/actstorms/ha-min-renovasjon/issues",
     "requirements": [],
     "ssdp": [],
-    "zeroconf": [],
-    "homekit": {},
-    "dependencies": [],
-    "version": "1.0.4"
-  }
+    "version": "1.0.4",
+    "zeroconf": []
+}
