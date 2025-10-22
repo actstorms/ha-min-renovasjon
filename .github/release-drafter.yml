@@ -22,7 +22,7 @@ categories:
     labels:
       - "maintenance"
       - "ci"
-  - title: "⬆️ Dependency updates"
+  - title: "Dependency updates"
     labels:
       - "dependencies"
 
