@@ -14,6 +14,8 @@ from .const import (
     CONF_STREET_CODE,
     CONF_HOUSE_NO,
     CONF_COUNTY_ID,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
 )
 
 import logging
@@ -34,6 +36,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_STREET_CODE): str,
                 vol.Required(CONF_HOUSE_NO): str,
                 vol.Required(CONF_COUNTY_ID): str,
+                vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): vol.All(vol.Coerce(int), vol.Range(min=1, max=168)),
             })
             return self.async_show_form(step_id="user", data_schema=data_schema)
 
@@ -48,6 +51,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_STREET_CODE, default=user_input.get(CONF_STREET_CODE, "")): str,
             vol.Required(CONF_HOUSE_NO, default=user_input.get(CONF_HOUSE_NO, "")): str,
             vol.Required(CONF_COUNTY_ID, default=user_input.get(CONF_COUNTY_ID, "")): str,
+            vol.Optional(CONF_UPDATE_INTERVAL, default=user_input.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)): vol.All(vol.Coerce(int), vol.Range(min=1, max=168)),
         })
         return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)
 

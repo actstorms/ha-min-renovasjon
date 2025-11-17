@@ -14,12 +14,12 @@ _LOGGER = logging.getLogger(__name__)
 class MinRenovasjonCoordinator(DataUpdateCoordinator):
     fractions = []
 
-    def __init__(self, hass: HomeAssistant, min_renovasjon: MinRenovasjon) -> None:
+    def __init__(self, hass: HomeAssistant, min_renovasjon: MinRenovasjon, update_interval_hours: int = 24) -> None:
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=24),
+            update_interval=timedelta(hours=update_interval_hours),
         )
         self.min_renovasjon = min_renovasjon
 

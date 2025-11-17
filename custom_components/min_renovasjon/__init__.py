@@ -12,6 +12,7 @@ from .const import (
     CONF_STREET_CODE,
     CONF_HOUSE_NO,
     CONF_COUNTY_ID,
+    CONF_UPDATE_INTERVAL,
     DEFAULT_DATE_FORMAT,
 )
 from .coordinator import MinRenovasjonCoordinator
@@ -33,7 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DEFAULT_DATE_FORMAT
     )
     await api.get_fraction_types()
-    coordinator = MinRenovasjonCoordinator(hass, api)
+    coordinator = MinRenovasjonCoordinator(hass, api, entry.data.get(CONF_UPDATE_INTERVAL, 24))
     coordinator.config_entry = entry  # Add config_entry reference
 
     await coordinator.async_config_entry_first_refresh()

@@ -1,7 +1,7 @@
 import aiohttp
 import urllib.parse
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,6 +23,9 @@ class MinRenovasjon:
 
     _calendar_list = []
     _fraction_types = {}
+    _fraction_types_cache = {}
+    _fraction_types_cache_timestamp = None
+    _fraction_types_cache_duration = timedelta(hours=24)
 
     def __init__(self, gatenavn, gatekode, husnr, kommunenr, date_format):
         self._gatenavn = self._url_encode(gatenavn)
@@ -68,11 +71,33 @@ class MinRenovasjon:
 
     async def get_fraction_types(self):
         _LOGGER.debug("Fetching fractions")
-        fractions_data = await self._get_from_web_api(CONST_URL_FRAKSJONER)
-        self._fraction_types = {
-            fraction['Id']: fraction
-            for fraction in fractions_data
-        }
+        
+        # Check if we have cached fraction types and they're still valid
+        if self._fraction_types and self._fraction_types_cache_timestamp:
+            if datetime.now() - self._fraction_types_cache_timestamp < self._fraction_types_cache_duration:
+                _LOGGER.debug("Using cached fraction types")
+                self._fraction_types = self._fraction_types_cache
+                return
+        
+        # Fetch fresh data if cache is invalid or empty
+        try:
+            fractions_data = await self._get_from_web_api(CONST_URL_FRAKSJONER)
+            self._fraction_types = {
+                fraction['Id']: fraction
+                for fraction in fractions_data
+            }
+            # Update cache
+            self._fraction_types_cache = self._fraction_types.copy()
+            self._fraction_types_cache_timestamp = datetime.now()
+            _LOGGER.debug("Fraction types cached successfully")
+        except Exception as err:
+            # If API call fails but we have cached data, use it
+            if self._fraction_types_cache:
+                _LOGGER.warning("Failed to fetch fresh fraction types, using cached data: %s", err)
+                self._fraction_types = self._fraction_types_cache
+            else:
+                _LOGGER.error("Failed to fetch fraction types and no cache available: %s", err)
+                raise
 
     def get_fraction_name(self, fraction_id):
         return self._fraction_types.get(int(fraction_id), {}).get("Navn", f"Unknown fraction {fraction_id}")

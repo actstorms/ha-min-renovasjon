@@ -4,6 +4,9 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .coordinator import MinRenovasjonCoordinator
 from datetime import datetime, time, timedelta
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the Min Renovasjon calendar."""
@@ -23,12 +26,24 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
         except AttributeError:
             entry_id = "min_renovasjon_unknown"
         self._attr_unique_id = f"{entry_id}_calendar"
+        
+        # Cache for processed events to avoid redundant processing
+        self._cached_events = []
+        self._cache_timestamp = None
+        self._cache_duration = timedelta(hours=1)
 
     @property
     def event(self):
         """Return the next upcoming event."""
         if not self.coordinator.data:
             return None
+
+        # Use cached result if available and still valid
+        if self._cached_events and self._cache_timestamp:
+            if datetime.now() - self._cache_timestamp < self._cache_duration:
+                # Return the earliest event from cached events
+                if self._cached_events:
+                    return min(self._cached_events, key=lambda e: e.start)
 
         # Find the earliest upcoming collection date from all fractions
         earliest_date = None
@@ -52,15 +67,19 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
             start_datetime = datetime.combine(earliest_date.date(), time.min).replace(tzinfo=dt_util.UTC)
             end_datetime = datetime.combine(earliest_date.date(), time(23, 59)).replace(tzinfo=dt_util.UTC)
 
-            return CalendarEvent(
+            event = CalendarEvent(
                 summary="Waste Collection",
                 start=start_datetime,
                 end=end_datetime,
             )
+            
+            # Cache this result
+            self._cached_events = [event]
+            self._cache_timestamp = datetime.now()
+            
+            return event
         except (AttributeError, TypeError, ValueError) as e:
             # Log error and return None if date processing fails
-            import logging
-            _LOGGER = logging.getLogger(__name__)
             _LOGGER.warning(f"Error processing calendar event dates: {e}")
             return None
 
@@ -69,7 +88,19 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
         if not self.coordinator.data:
             return []
 
+        # Check if we have cached results and they're still valid
+        if (self._cached_events and self._cache_timestamp and 
+            datetime.now() - self._cache_timestamp < self._cache_duration):
+            # Filter cached events by date range
+            filtered_events = []
+            for event in self._cached_events:
+                if start_date <= event.start <= end_date or start_date <= event.end <= end_date:
+                    filtered_events.append(event)
+            return filtered_events
+
         events = []
+        processed_dates = set()  # Track processed dates to avoid duplicates
+        
         for fraction_data in self.coordinator.data.values():
             if not fraction_data or len(fraction_data) < 5:
                 continue
@@ -82,6 +113,12 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
             for date in dates:
                 if date is None:
                     continue
+
+                # Create date key to avoid duplicate events for same date
+                date_key = date.date()
+                if date_key in processed_dates:
+                    continue
+                processed_dates.add(date_key)
 
                 # Make dates timezone-aware for comparison and event creation
                 date_midnight = datetime.combine(date.date(), time.min).replace(tzinfo=dt_util.UTC)
@@ -96,4 +133,9 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
                             end=date_same_day_end,
                         )
                     )
+        
+        # Cache the results for future use
+        self._cached_events = events
+        self._cache_timestamp = datetime.now()
+        
         return events
