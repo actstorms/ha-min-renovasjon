@@ -7,7 +7,10 @@ This custom integration allows you to integrate Min Renovasjon waste collection 
 - Automatically fetches waste collection data from Min Renovasjon API
 - Creates sensors for each waste fraction (e.g., paper, residual waste, food waste)
 - Displays the next collection date for each fraction
-- Updates data periodically (default: daily)
+- Updates data periodically (configurable: 1-168 hours, default: 24 hours)
+- Calendar integration showing upcoming collection events
+- Cached fraction types to reduce API calls
+- Optimized event processing to avoid redundant calculations
 
 ## Installation
 
@@ -38,15 +41,28 @@ To add Min Renovasjon to your Home Assistant instance:
    - Street Code
    - House Number
    - County ID
+   - Update Interval (hours) - optional, default 24 hours
 5. Click "Submit" to add the integration.
 
 ## Usage
 
-After configuration, the integration will create sensors for each waste fraction. These sensors will show up in your Home Assistant as:
+After configuration, the integration will create:
 
+### Sensors
+Individual sensors for each waste fraction showing next collection date:
 - `sensor.min_renovasjon_[fraction_name]`
 
-The state of each sensor will be the date of the next collection for that fraction.
+### Calendar
+A calendar entity showing upcoming waste collection events:
+- `calendar.min_renovasjon_collection`
+
+The state of each sensor will be the date of the next collection for that fraction. Additional attributes include days until collection and next collection date.
+
+## Configuration Options
+
+- **Update Interval**: Control how often the integration fetches new data (1-168 hours). Default is 24 hours.
+- **Caching**: Fraction types are cached for 24 hours to reduce API calls.
+- **Calendar Events**: Collection events are cached for 1 hour to optimize performance.
 
 ## Troubleshooting
 
@@ -55,6 +71,7 @@ If you encounter any issues:
 1. Check the Home Assistant logs for any error messages related to Min Renovasjon.
 2. Ensure that your address information is correct.
 3. Verify that you can access the Min Renovasjon service from your location.
+4. Try adjusting the update interval if you're experiencing rate limiting or slow responses.
 
 ## Contributing
 
