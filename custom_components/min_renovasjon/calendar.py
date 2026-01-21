@@ -100,12 +100,14 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
 
         events = []
         processed_dates = set()  # Track processed dates to avoid duplicates
-        
+
         for fraction_data in self.coordinator.data.values():
             if not fraction_data or len(fraction_data) < 5:
                 continue
 
             # Get the collection dates (indices 3 and 4 are next_pickup and next_next_pickup)
+            fraction_id = fraction_data[0]
+            fraction_name = fraction_data[1]
             next_pickup = fraction_data[3]
             next_next_pickup = fraction_data[4]
 
@@ -114,8 +116,8 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
                 if date is None:
                     continue
 
-                # Create date key to avoid duplicate events for same date
-                date_key = date.date()
+                # Create unique key combining date and fraction to allow multiple collections on same day
+                date_key = (date.date(), fraction_id)
                 if date_key in processed_dates:
                     continue
                 processed_dates.add(date_key)
@@ -125,7 +127,6 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
                 date_same_day_end = datetime.combine(date.date(), time(23, 59)).replace(tzinfo=dt_util.UTC)
 
                 if start_date <= date_midnight <= end_date or start_date <= date_same_day_end <= end_date:
-                    fraction_name = fraction_data[1] if len(fraction_data) > 1 else "Waste Collection"
                     events.append(
                         CalendarEvent(
                             summary=fraction_name,
