@@ -3,7 +3,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .coordinator import MinRenovasjonCoordinator
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,11 +26,6 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
         except AttributeError:
             entry_id = "min_renovasjon_unknown"
         self._attr_unique_id = f"{entry_id}_calendar"
-        
-        # Cache for processed events to avoid redundant processing
-        self._cached_events = []
-        self._cache_timestamp = None
-        self._cache_duration = timedelta(hours=1)
 
     @property
     def event(self):
@@ -38,65 +33,44 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
         if not self.coordinator.data:
             return None
 
-        # Use cached result if available and still valid
-        if self._cached_events and self._cache_timestamp:
-            if datetime.now() - self._cache_timestamp < self._cache_duration:
-                # Return the earliest event from cached events
-                if self._cached_events:
-                    return min(self._cached_events, key=lambda e: e.start)
-
-        # Find the earliest upcoming collection date from all fractions
+        # Find the earliest upcoming collection from all fractions
+        earliest_event = None
         earliest_date = None
+
         for fraction_data in self.coordinator.data.values():
-            if fraction_data and len(fraction_data) >= 4:
-                next_date = fraction_data[3]  # next_pickup
-                next_next_date = fraction_data[4] if len(fraction_data) >= 5 else None
+            if not fraction_data or len(fraction_data) < 4:
+                continue
 
-                # Check both next and next-next dates
-                for potential_date in [next_date, next_next_date]:
-                    if (potential_date is not None and
-                        isinstance(potential_date, datetime) and
-                        (earliest_date is None or potential_date < earliest_date)):
-                        earliest_date = potential_date
+            fraction_id = fraction_data[0]
+            fraction_name = fraction_data[1]
+            next_pickup = fraction_data[3]
+            next_next_pickup = fraction_data[4] if len(fraction_data) >= 5 else None
 
-        if earliest_date is None:
-            return None
+            # Check both next and next-next dates
+            for pickup_date in [next_pickup, next_next_pickup]:
+                if pickup_date is None or not isinstance(pickup_date, datetime):
+                    continue
 
-        # Make datetime timezone-aware for Home Assistant calendar validation
-        try:
-            start_datetime = datetime.combine(earliest_date.date(), time.min).replace(tzinfo=dt_util.UTC)
-            end_datetime = datetime.combine(earliest_date.date(), time(23, 59)).replace(tzinfo=dt_util.UTC)
+                if earliest_date is None or pickup_date < earliest_date:
+                    earliest_date = pickup_date
+                    try:
+                        start_datetime = datetime.combine(pickup_date.date(), time.min).replace(tzinfo=dt_util.UTC)
+                        end_datetime = datetime.combine(pickup_date.date(), time(23, 59)).replace(tzinfo=dt_util.UTC)
+                        earliest_event = CalendarEvent(
+                            summary=fraction_name,
+                            start=start_datetime,
+                            end=end_datetime,
+                        )
+                    except (AttributeError, TypeError, ValueError) as e:
+                        _LOGGER.warning(f"Error processing calendar event dates: {e}")
+                        continue
 
-            event = CalendarEvent(
-                summary="Waste Collection",
-                start=start_datetime,
-                end=end_datetime,
-            )
-            
-            # Cache this result
-            self._cached_events = [event]
-            self._cache_timestamp = datetime.now()
-            
-            return event
-        except (AttributeError, TypeError, ValueError) as e:
-            # Log error and return None if date processing fails
-            _LOGGER.warning(f"Error processing calendar event dates: {e}")
-            return None
+        return earliest_event
 
     async def async_get_events(self, hass, start_date, end_date):
         """Return events within a start and end date."""
         if not self.coordinator.data:
             return []
-
-        # Check if we have cached results and they're still valid
-        if (self._cached_events and self._cache_timestamp and 
-            datetime.now() - self._cache_timestamp < self._cache_duration):
-            # Filter cached events by date range
-            filtered_events = []
-            for event in self._cached_events:
-                if start_date <= event.start <= end_date or start_date <= event.end <= end_date:
-                    filtered_events.append(event)
-            return filtered_events
 
         events = []
         processed_dates = set()  # Track processed dates to avoid duplicates
@@ -134,9 +108,5 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
                             end=date_same_day_end,
                         )
                     )
-        
-        # Cache the results for future use
-        self._cached_events = events
-        self._cache_timestamp = datetime.now()
-        
+
         return events
