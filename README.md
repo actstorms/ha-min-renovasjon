@@ -22,27 +22,19 @@ This custom integration allows you to integrate Min Renovasjon waste collection 
 2. Copy the folder to your `custom_components` directory in your Home Assistant configuration directory.
 3. Restart Home Assistant.
 
-## Get Street code and county id
-Can be found with this REST-API call.
-```
-https://ws.geonorge.no/adresser/v1/sok?sok=Min%20Gate%2012
-```
-"street_code" equals to "adressekode" and "county_id" equals to "kommunenummer".
-
 ## Configuration
 
 To add Min Renovasjon to your Home Assistant instance:
 
-1. Go to Configuration -> Integrations.
-2. Click the "+ ADD INTEGRATION" button.
+1. Go to **Settings** -> **Devices & services**.
+2. Click the **"+ ADD INTEGRATION"** button.
 3. Search for "Min Renovasjon" and select it.
-4. Enter the required information:
-   - Street Name
-   - Street Code
-   - House Number
-   - County ID
-   - Update Interval (hours) - optional, default 24 hours
-5. Click "Submit" to add the integration.
+4. Enter your address (e.g., `Mingate 10`).
+5. If multiple addresses match, select the correct one from the list.
+6. Confirm the address and optionally adjust the update interval (default: 24 hours).
+7. Click "Submit" to add the integration.
+
+The integration will automatically look up your street code, county ID, and other required information using the official Norwegian address database (Geonorge).
 
 ## Usage
 
@@ -61,17 +53,17 @@ The state of each sensor will be the date of the next collection for that fracti
 ## Configuration Options
 
 - **Update Interval**: Control how often the integration fetches new data (1-168 hours). Default is 24 hours.
-- **Caching**: Fraction types are cached for 24 hours to reduce API calls.
-- **Calendar Events**: Collection events are cached for 1 hour to optimize performance.
+- **Address Lookup**: The integration uses the official Norwegian address database (Geonorge) to automatically find your street code and municipality ID.
 
 ## Troubleshooting
 
 If you encounter any issues:
 
 1. Check the Home Assistant logs for any error messages related to Min Renovasjon.
-2. Ensure that your address information is correct.
-3. Verify that you can access the Min Renovasjon service from your location.
-4. Try adjusting the update interval if you're experiencing rate limiting or slow responses.
+2. Ensure that your address is entered correctly and can be found in the Norwegian address database.
+3. Try searching for your address at [https://ws.geonorge.no/adresser/v1/sok?sok=your+address](https://ws.geonorge.no/adresser/v1/sok?sok=Min+Gate+12) to verify it exists.
+4. Verify that your municipality is supported by the Min Renovasjon service.
+5. Try adjusting the update interval if you're experiencing issues.
 
 ## Contributing
 
