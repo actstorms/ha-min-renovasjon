@@ -1,34 +1,44 @@
 {
-    "config": {
-      "step": {
-        "user": {
-          "title": "Min Renovasjon",
-          "description": "Sett opp Min Renovasjon integrasjon",
-          "data": {
-            "street_name": "Gatenavn",
-            "street_code": "Gatekode",
-            "house_no": "Husnummer",
-            "county_id": "Kommunenummer"
-          }
+  "config": {
+    "step": {
+      "user": {
+        "title": "Min Renovasjon",
+        "description": "Sett opp Min Renovasjon integrasjon",
+        "data": {
+          "street_name": "Gatenavn",
+          "street_code": "Gatekode",
+          "house_no": "Husnummer",
+          "county_id": "Kommunenummer"
         }
       },
-      "error": {
-        "cannot_connect": "Kunne ikke koble til",
-        "invalid_auth": "Ugyldig autentisering",
-        "unknown": "Uventet feil"
-      },
-      "abort": {
-        "already_configured": "Min Renovasjon er allerede konfigurert"
+      "reconfigure": {
+        "title": "Omkonfigurer Min Renovasjon",
+        "description": "Oppdater innstillingene for Min Renovasjon-integrasjonen for {street_name} {house_no}.",
+        "data": {
+          "update_interval": "Oppdateringsintervall (timer)"
+        }
       }
     },
-    "entity": {
-      "sensor": {
-        "next_pickup": {
-          "name": "Neste henting",
-          "state": {
-            "unknown": "Ukjent"
-          }
+    "error": {
+      "cannot_connect": "Kunne ikke koble til",
+      "invalid_auth": "Ugyldig autentisering",
+      "unknown": "Uventet feil",
+      "search_failed": "Adressesøk feilet",
+      "no_results": "Ingen resultater funnet"
+    },
+    "abort": {
+      "already_configured": "Min Renovasjon er allerede konfigurert",
+      "reconfigure_successful": "Konfigurasjon oppdatert"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_pickup": {
+        "name": "Neste henting",
+        "state": {
+          "unknown": "Ukjent"
         }
       }
     }
   }
+}

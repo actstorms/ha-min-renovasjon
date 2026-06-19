@@ -33,11 +33,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_COUNTY_ID],
         DEFAULT_DATE_FORMAT
     )
-    await api.get_fraction_types()
+
+    # Attempt to fetch fraction types, but don't crash if it fails
+    # The coordinator will retry on its next update
+    try:
+        await api.get_fraction_types()
+    except Exception as err:
+        _LOGGER.warning(
+            "Failed to fetch fraction types during setup: %s. "
+            "The integration will retry on the next scheduled update.",
+            err
+        )
+
     coordinator = MinRenovasjonCoordinator(hass, api, entry.data.get(CONF_UPDATE_INTERVAL, 24))
     coordinator.config_entry = entry  # Add config_entry reference
 
-    await coordinator.async_config_entry_first_refresh()
+    # Attempt initial data refresh, but don't crash the setup if it fails
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception as err:
+        _LOGGER.warning(
+            "Initial data refresh failed for %s: %s. "
+            "Sensors will show as unavailable until the next successful update.",
+            entry.title, err
+        )
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
