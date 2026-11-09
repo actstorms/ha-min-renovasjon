@@ -3,7 +3,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .coordinator import MinRenovasjonCoordinator
-from datetime import datetime, time
+from datetime import datetime, timedelta
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -54,12 +54,11 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
                 if earliest_date is None or pickup_date < earliest_date:
                     earliest_date = pickup_date
                     try:
-                        start_datetime = datetime.combine(pickup_date.date(), time.min).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
-                        end_datetime = datetime.combine(pickup_date.date(), time(23, 59)).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+                        pickup_day = pickup_date.date()
                         earliest_event = CalendarEvent(
                             summary=fraction_name,
-                            start=start_datetime,
-                            end=end_datetime,
+                            start=pickup_day,
+                            end=pickup_day + timedelta(days=1),
                         )
                     except (AttributeError, TypeError, ValueError) as e:
                         _LOGGER.warning(f"Error processing calendar event dates: {e}")
@@ -86,26 +85,26 @@ class MinRenovasjonCalendar(CoordinatorEntity, CalendarEntity):
             next_next_pickup = fraction_data[4]
 
             dates = [next_pickup, next_next_pickup]
-            for date in dates:
-                if date is None:
+            for pickup_date in dates:
+                if pickup_date is None:
                     continue
 
+                pickup_day = pickup_date.date()
+
                 # Create unique key combining date and fraction to allow multiple collections on same day
-                date_key = (date.date(), fraction_id)
+                date_key = (pickup_day, fraction_id)
                 if date_key in processed_dates:
                     continue
                 processed_dates.add(date_key)
 
-                # Make dates timezone-aware for comparison and event creation
-                date_midnight = datetime.combine(date.date(), time.min).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
-                date_same_day_end = datetime.combine(date.date(), time(23, 59)).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
-
-                if start_date <= date_midnight <= end_date or start_date <= date_same_day_end <= end_date:
+                # Home Assistant requests events overlapping [start_date, end_date)
+                event_start = dt_util.start_of_local_day(pickup_day)
+                if event_start < end_date and event_start + timedelta(days=1) > start_date:
                     events.append(
                         CalendarEvent(
                             summary=fraction_name,
-                            start=date_midnight,
-                            end=date_same_day_end,
+                            start=pickup_day,
+                            end=pickup_day + timedelta(days=1),
                         )
                     )
 
