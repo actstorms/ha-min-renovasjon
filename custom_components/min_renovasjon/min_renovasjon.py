@@ -1,3 +1,4 @@
+import asyncio
 import aiohttp
 import urllib.parse
 import json
@@ -63,11 +64,52 @@ class MinRenovasjon:
             CONST_APP_KEY: CONST_APP_KEY_VALUE,
         }
         _LOGGER.debug("Requesting URL: %s", url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=header, timeout=10) as response:
-                _LOGGER.debug("API response status code: %s", response.status)
-                response.raise_for_status()
-                return await response.json(content_type=None)
+
+        max_retries = 3
+        last_exception = None
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers=header, timeout=30) as response:
+                        _LOGGER.debug(
+                            "API response status code: %s (attempt %d/%d)",
+                            response.status, attempt, max_retries
+                        )
+
+                        if response.status == 403:
+                            raise aiohttp.ClientResponseError(
+                                request_info=response.request_info,
+                                history=response.history,
+                                status=response.status,
+                                message=(
+                                    "Forbidden: The API rejected the request. "
+                                    "This may be due to an incorrect municipality number, "
+                                    "or the API endpoint may have changed. "
+                                    "Please verify your configuration settings in Home Assistant."
+                                ),
+                                headers=response.headers,
+                            )
+
+                        response.raise_for_status()
+                        return await response.json(content_type=None)
+
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                last_exception = err
+                if attempt < max_retries:
+                    wait_time = 2 ** attempt  # exponential backoff: 2, 4, 8 seconds
+                    _LOGGER.warning(
+                        "API request attempt %d/%d failed: %s. Retrying in %d seconds...",
+                        attempt, max_retries, err, wait_time
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    _LOGGER.error(
+                        "All %d API request attempts failed. Last error: %s",
+                        max_retries, err
+                    )
+
+        raise last_exception
 
     async def get_fraction_types(self):
         _LOGGER.debug("Fetching fractions")
@@ -90,14 +132,50 @@ class MinRenovasjon:
             self._fraction_types_cache = self._fraction_types.copy()
             self._fraction_types_cache_timestamp = datetime.now()
             _LOGGER.debug("Fraction types cached successfully")
-        except Exception as err:
-            # If API call fails but we have cached data, use it
-            if self._fraction_types_cache:
-                _LOGGER.warning("Failed to fetch fresh fraction types, using cached data: %s", err)
-                self._fraction_types = self._fraction_types_cache
+        except aiohttp.ClientResponseError as err:
+            if err.status == 403:
+                _LOGGER.error(
+                    "API returned 403 Forbidden when fetching fraction types. "
+                    "This usually means the municipality number (%s) is incorrect "
+                    "or the API endpoint has changed. "
+                    "Please verify your configuration in Home Assistant.",
+                    self._kommunenr
+                )
             else:
-                _LOGGER.error("Failed to fetch fraction types and no cache available: %s", err)
-                raise
+                _LOGGER.error(
+                    "API request failed with status %d: %s",
+                    err.status, err
+                )
+            # Fall through to cache check
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            _LOGGER.error(
+                "Network error fetching fraction types: %s. "
+                "Check your internet connection and ensure the API is accessible.",
+                err
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Unexpected error fetching fraction types: %s",
+                err
+            )
+        else:
+            # No exception occurred - data fetched successfully
+            return
+
+        # If we reach here, fetching failed - try to use cached data
+        if self._fraction_types_cache:
+            _LOGGER.warning(
+                "Failed to fetch fresh fraction types, using cached data. "
+                "Some fraction names may be outdated."
+            )
+            self._fraction_types = self._fraction_types_cache
+        else:
+            _LOGGER.error(
+                "Failed to fetch fraction types and no cache available. "
+                "The integration will not function correctly until this is resolved. "
+                "Please check your configuration and try again."
+            )
+            raise
 
     def get_fraction_name(self, fraction_id):
         return self._fraction_types.get(int(fraction_id), {}).get("Navn", f"Unknown fraction {fraction_id}")

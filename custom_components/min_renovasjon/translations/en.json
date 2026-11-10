@@ -1,35 +1,44 @@
 {
-    "config": {
-      "step": {
-        "user": {
-          "title": "My Renovation",
-          "description": "Set up My Renovation integration",
-          "data": {
-            "street_name": "Street Name",
-            "street_code": "Street Code",
-            "house_no": "House Number",
-            "county_id": "County Number"
-          }
+  "config": {
+    "step": {
+      "user": {
+        "title": "My Renovation",
+        "description": "Set up My Renovation integration",
+        "data": {
+          "street_name": "Street Name",
+          "street_code": "Street Code",
+          "house_no": "House Number",
+          "county_id": "County Number"
         }
       },
-      "error": {
-        "cannot_connect": "Could not connect",
-        "invalid_auth": "Invalid authentication",
-        "unknown": "Unexpected error"
-      },
-      "abort": {
-        "already_configured": "My Renovation is already configured"
+      "reconfigure": {
+        "title": "Reconfigure My Renovation",
+        "description": "Update the settings for your Min Renovasjon integration for {street_name} {house_no}.",
+        "data": {
+          "update_interval": "Update interval (hours)"
+        }
       }
     },
-    "entity": {
-      "sensor": {
-        "next_pickup": {
-          "name": "Next Pickup",
-          "state": {
-            "unknown": "Unknown"
-          }
+    "error": {
+      "cannot_connect": "Could not connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error",
+      "search_failed": "Address search failed",
+      "no_results": "No results found"
+    },
+    "abort": {
+      "already_configured": "My Renovation is already configured",
+      "reconfigure_successful": "Configuration updated successfully"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_pickup": {
+        "name": "Next Pickup",
+        "state": {
+          "unknown": "Unknown"
         }
       }
     }
   }
-  
+}

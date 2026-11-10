@@ -216,6 +216,48 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data=config_data
         )
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration of the integration.
+
+        Allows users to change the update interval without
+        removing and re-adding the integration.
+        """
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+
+        if user_input is not None:
+            # Update the config entry data with the new interval
+            new_data = {
+                **entry.data,
+                CONF_UPDATE_INTERVAL: user_input[CONF_UPDATE_INTERVAL],
+            }
+            return self.async_update_reinitialize_and_abort(
+                entry,
+                data=new_data,
+            )
+
+        # Show the form pre-filled with current value
+        current_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+
+        schema = vol.Schema({
+            vol.Optional(CONF_UPDATE_INTERVAL, default=current_interval): vol.All(
+                vol.Coerce(int),
+                vol.Range(min=1, max=168),
+            ),
+        })
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "street_name": entry.data.get(CONF_STREET_NAME, ""),
+                "house_no": entry.data.get(CONF_HOUSE_NO, ""),
+            },
+        )
+
     def _get_confirmation_schema(self):
         """Create the confirmation form schema."""
         return vol.Schema({

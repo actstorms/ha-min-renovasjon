@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -78,6 +78,9 @@ class MinRenovasjonNextCollectionSensor(CoordinatorEntity, SensorEntity):
         return attributes
 
 class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for a single waste fraction with timestamp device class."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, coordinator: MinRenovasjonCoordinator, fraction_id: str) -> None:
         super().__init__(coordinator)
@@ -87,7 +90,12 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
         _LOGGER.debug("Initialized sensor for fraction %s with name %s", fraction_id, self._attr_name)
 
     @property
-    def state(self) -> str:
+    def state(self) -> datetime | None:
+        """Return the next pickup datetime for this fraction.
+        
+        Using device_class: timestamp, Home Assistant expects a datetime object
+        or None if no upcoming date is available.
+        """
         _LOGGER.debug("Getting state for fraction %s", self._fraction_id)
         _LOGGER.debug("Coordinator data: %s", self.coordinator.data)
         
@@ -96,15 +104,16 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
             _LOGGER.debug("Fraction data for %s: %s", self._fraction_id, fraction_data)
             
             if fraction_data and len(fraction_data) > 3 and fraction_data[3]:
-                state = self.coordinator.min_renovasjon.format_date(fraction_data[3])
-                _LOGGER.debug("Formatted state for fraction %s: %s", self._fraction_id, state)
-                return state
+                # Return the raw datetime object - device_class: timestamp handles serialization
+                pickup_datetime = fraction_data[3]
+                _LOGGER.debug("State for fraction %s: %s", self._fraction_id, pickup_datetime)
+                return pickup_datetime
             else:
                 _LOGGER.warning("Invalid or missing data for fraction %s", self._fraction_id)
         except Exception as e:
             _LOGGER.exception("Error getting state for fraction %s: %s", self._fraction_id, e)
         
-        return "Unknown"
+        return None
 
     @property
     def entity_picture(self) -> str | None:
@@ -120,7 +129,8 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
         return None
 
     @property
-    def extra_state_attributes(self) -> dict[str, str]:
+    def extra_state_attributes(self) -> dict[str, str | int]:
+        """Return extra state attributes including formatted date strings."""
         attributes = {}
         try:
             fraction_data = self.coordinator.data.get(self._fraction_id)
@@ -132,6 +142,8 @@ class MinRenovasjonSensor(CoordinatorEntity, SensorEntity):
                     if isinstance(next_date, datetime):
                         days_until = (next_date.date() - datetime.now().date()).days
                         attributes["days_until"] = max(0, days_until)
+                        # Keep the formatted date for backward compatibility
+                        attributes["next_collection_date"] = next_date.strftime("%d/%m/%Y")
                 attributes["fraction_name"] = self.coordinator.min_renovasjon.get_fraction_name(self._fraction_id)
             _LOGGER.debug("Extra state attributes for fraction %s: %s", self._fraction_id, attributes)
         except Exception as e:
